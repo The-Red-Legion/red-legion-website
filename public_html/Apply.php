@@ -30,15 +30,27 @@ if(!empty($_GET['code']))
     //init() takes the code returned from Discord and fetches the access_token for the user.
     //Once that's done and set in the session, we can start pulling data.
     init($env['DISCORD_REDIRECT_URI2'], $env['DISCORD_CLIENT_ID'], $env['DISCORD_CLIENT_SECRET'], $env['DISCORD_BOT_TOKEN']);
-    get_user();
-
-    d($_SESSION);exit;
 }
 
-exit;
 
+//Step 3: Get user information, and update the database.
+if(!empty($_SESSION['access_token']))
+{
+    get_user();
+    $_SESSION['user']['guilds'] = get_guilds();
 
+    //Update the guild database.
+    syncDiscordGuilds();
 
+    //Create applicant record.
+    $applicantId = insertApplicantFromDiscord();
+
+    //Write guild relationships.
+    if ($applicantId !== null) {
+        insertGuildMembershipsForApplicant($applicantId);
+        $_SESSION['ApplicantID'] = $applicantId;
+    }
+}
 
 
 
