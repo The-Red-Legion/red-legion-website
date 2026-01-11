@@ -42,7 +42,7 @@ function init($redirect_url, $client_id, $client_secret, $bot_token = null)
     // Fetching code and state from URL
     $code  = $_GET['code']  ?? null;
     $state = $_GET['state'] ?? null;
-    
+
     // Check if $state == $_SESSION['state'] to verify if the login is legit | CHECK THE FUNCTION get_state($state) FOR MORE INFORMATION.
     $url = $GLOBALS['base_url'] . "/api/oauth2/token";
     $data = array(
@@ -61,7 +61,8 @@ function init($redirect_url, $client_id, $client_secret, $bot_token = null)
     $response = curl_exec($curl);
     curl_close($curl);
     $results = json_decode($response, true);
-    $accessToken = $results['access_token'] ?? null;
+
+    $_SESSION['access_token'] = $results['access_token'] ?? null;
 }
 
 // A function to get user information | (identify scope)

@@ -3,9 +3,46 @@ $bootstrap = require __DIR__ . '/../app/bootstrap.php';
 include __DIR__ . '/../app/functions.php';
 include __DIR__ . '/../app/discord.php';
 
+d($_SESSION);
 //1. Visiting the page for the first time, set us at step 1.
 //We need to authenticate with Discord.
-if(empty($_SESSION['ApplicationStep']))
+
+
+//Step 1: Generate the Authentication URL for Discord.
+if($env['APP_ENV'] == 'dev')
+{
+    $DiscordRedirectURI = $env['DISCORD_REDIRECT_URI2'];
+}
+else
+{
+   $DiscordRedirectURI = $env['DISCORD_REDIRECT_URI1'];
+}
+$DiscordURL = url($env['DISCORD_CLIENT_ID'], $DiscordRedirectURI, $env['DISCORD_SCOPES']);
+
+echo $DiscordURL;
+/////////////////////////////////////
+
+
+//Step 2: After Authentication, initiatize the data structure and pull info.
+//This runs after authentication.
+if(!empty($_GET['code']))
+{
+    //init() takes the code returned from Discord and fetches the access_token for the user.
+    //Once that's done and set in the session, we can start pulling data.
+    init($env['DISCORD_REDIRECT_URI2'], $env['DISCORD_CLIENT_ID'], $env['DISCORD_CLIENT_SECRET'], $env['DISCORD_BOT_TOKEN']);
+    get_user();
+
+    d($_SESSION);exit;
+}
+
+exit;
+
+
+
+
+
+
+if(empty($_SESSION['ApplicationStep']) || $_SESSION['ApplicationStep'] == 1)
 {
     $_SESSION['ApplicationStep'] = 1;
 
@@ -22,35 +59,34 @@ if(empty($_SESSION['ApplicationStep']))
     }
 
     $DiscordURL = url($env['DISCORD_CLIENT_ID'], $DiscordRedirectURI, $env['DISCORD_SCOPES']);
-    
+
     //If we're not already in possession of an access token for the user,
     //have them authenticate into Discord.
     if(empty($_SESSION['access_token']))
     {
         init($env['DISCORD_REDIRECT_URI2'], $env['DISCORD_CLIENT_ID'], $env['DISCORD_CLIENT_SECRET'], $env['DISCORD_BOT_TOKEN']);
     }
-}
 
-//If we're in this code block, the user has authenticated with Discord.
-//Track the info and progress.
-if(($_SESSION['ApplicationStep'] ?? null) === 1 && !empty($_GET['state']))
-{
-    //Get the Discord User and Guild Information.
-    get_user();
-    $_SESSION['user']['guilds'] = get_guilds();
+    if(!empty($_SESSION['access_token']))
+    {
+        //Get the Discord User and Guild Information.
+        get_user();
+        $_SESSION['user']['guilds'] = get_guilds();
 
-    //Update the guild database.
-    syncDiscordGuilds();
+        //Update the guild database.
+        syncDiscordGuilds();
 
-    //Create applicant record.
-    $applicantId = insertApplicantFromDiscord();
+        //Create applicant record.
+        $applicantId = insertApplicantFromDiscord();
 
-    //Write guild relationships.
-    if ($applicantId !== null) {
-        insertGuildMembershipsForApplicant($applicantId);
-        $_SESSION['ApplicantID'] = $applicantId;
+        //Write guild relationships.
+        if ($applicantId !== null) {
+            insertGuildMembershipsForApplicant($applicantId);
+            $_SESSION['ApplicantID'] = $applicantId;
+        }
     }
 }
+
 ?>
 <!doctype html>
 <html lang="en">

@@ -245,3 +245,30 @@ function insertGuildMembershipsForApplicant(int $applicantId): void
         ]);
     }
 }
+
+/**
+ * Retrieves the RSI authentication / confirmation token for an applicant.
+ *
+ * @param int $applicantId  Internal ApplicantID
+ * @return string|null      RSI token if found, null otherwise
+ */
+function getRSIAuthTokenByApplicantId(int $applicantId): ?string
+{
+    global $pdo;
+
+    $sql = "
+        SELECT RSIConfirmationToken
+        FROM Applicants
+        WHERE ApplicantID = :applicant_id
+        LIMIT 1
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        ':applicant_id' => $applicantId
+    ]);
+
+    $token = $stmt->fetchColumn();
+
+    return $token !== false ? $token : null;
+}
