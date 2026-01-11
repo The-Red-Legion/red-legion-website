@@ -27,6 +27,7 @@ function gen_state()
 // A function to generate oAuth2 URL for logging in
 function url($clientid, $redirect, $scope)
 {
+    $state = gen_state();
     return 'https://discordapp.com/oauth2/authorize?response_type=code&client_id=' . $clientid . '&redirect_uri=' . $redirect . '&scope=' . $scope . "&state=" . $_SESSION['state'];
 }
 
@@ -39,8 +40,8 @@ function init($redirect_url, $client_id, $client_secret, $bot_token = null)
     }
 
     // Fetching code and state from URL
-    $code = $_GET['code'];
-    $state = $_GET['state'];
+    $code  = $_GET['code']  ?? null;
+    $state = $_GET['state'] ?? null;
     
     // Check if $state == $_SESSION['state'] to verify if the login is legit | CHECK THE FUNCTION get_state($state) FOR MORE INFORMATION.
     $url = $GLOBALS['base_url'] . "/api/oauth2/token";
@@ -60,7 +61,7 @@ function init($redirect_url, $client_id, $client_secret, $bot_token = null)
     $response = curl_exec($curl);
     curl_close($curl);
     $results = json_decode($response, true);
-    $_SESSION['access_token'] = $results['access_token'];
+    $accessToken = $results['access_token'] ?? null;
 }
 
 // A function to get user information | (identify scope)
@@ -128,7 +129,7 @@ function get_guilds()
 function get_guild($id)
 {
     $url = $GLOBALS['base_url'] . "/api/guilds/$id";
-    $headers = array('Content-Type: application/x-www-form-urlencoded', 'Authorization: Bot ' . $GLOBALS['bot_token']);
+    $headers = array('Content-Type: application/x-www-form-urlencoded', 'Authorization: Bot ' . $env['DISCORD_BOT_TOKEN']);
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
@@ -190,4 +191,121 @@ function check_state($state)
         # The login is not valid, so you should probably redirect them back to home page
         return false;
     }
+}
+
+
+function discordPermissionMap(): array {
+    return [
+        // Legacy + Core
+        0  => 'CREATE_INSTANT_INVITE',
+        1  => 'KICK_MEMBERS',
+        2  => 'BAN_MEMBERS',
+        3  => 'ADMINISTRATOR',
+        4  => 'MANAGE_CHANNELS',
+        5  => 'MANAGE_GUILD',
+        6  => 'ADD_REACTIONS',
+        7  => 'VIEW_AUDIT_LOG',
+        8  => 'PRIORITY_SPEAKER',
+        9  => 'STREAM',
+        10 => 'VIEW_CHANNEL',
+        11 => 'SEND_MESSAGES',
+        12 => 'SEND_TTS_MESSAGES',
+        13 => 'MANAGE_MESSAGES',
+        14 => 'EMBED_LINKS',
+        15 => 'ATTACH_FILES',
+        16 => 'READ_MESSAGE_HISTORY',
+        17 => 'MENTION_EVERYONE',
+        18 => 'USE_EXTERNAL_EMOJIS',
+        19 => 'VIEW_GUILD_INSIGHTS',
+        20 => 'CONNECT',
+        21 => 'SPEAK',
+        22 => 'MUTE_MEMBERS',
+        23 => 'DEAFEN_MEMBERS',
+        24 => 'MOVE_MEMBERS',
+        25 => 'USE_VAD',
+        26 => 'CHANGE_NICKNAME',
+        27 => 'MANAGE_NICKNAMES',
+        28 => 'MANAGE_ROLES',
+        29 => 'MANAGE_WEBHOOKS',
+        30 => 'MANAGE_EMOJIS_AND_STICKERS',
+
+        // New / Extended
+        31 => 'USE_APPLICATION_COMMANDS',
+        32 => 'REQUEST_TO_SPEAK',
+        33 => 'MANAGE_EVENTS',
+        34 => 'MANAGE_THREADS',
+        35 => 'CREATE_PUBLIC_THREADS',
+        36 => 'CREATE_PRIVATE_THREADS',
+        37 => 'USE_EXTERNAL_STICKERS',
+        38 => 'SEND_MESSAGES_IN_THREADS',
+        39 => 'START_EMBEDDED_ACTIVITIES',
+        40 => 'MODERATE_MEMBERS',
+        41 => 'VIEW_CREATOR_MONETIZATION_ANALYTICS',
+        42 => 'USE_SOUNDBOARD',
+        45 => 'USE_EXTERNAL_SOUNDS',
+        46 => 'SEND_VOICE_MESSAGES'
+    ];
+}
+
+function syncDiscordGuilds(): int
+{
+    global $pdo; 
+    $session = $_SESSION;
+
+    if (empty($session['user']['guilds']) || !is_array($session['user']['guilds'])
+    )
+    {
+        return 0;
+    }
+
+    $sql = "
+        INSERT INTO Guilds (
+            GuildID,
+            GuildName,
+            GuildIcon,
+            GuildBanner,
+            CreateDate,
+            ModifyDate
+        )
+        VALUES (
+            :guild_id,
+            :guild_name,
+            :guild_icon,
+            :guild_banner,
+            NOW(),
+            NULL
+        )
+        ON DUPLICATE KEY UPDATE
+            GuildName   = VALUES(GuildName),
+            GuildIcon   = VALUES(GuildIcon),
+            GuildBanner = VALUES(GuildBanner),
+            ModifyDate  = NOW()
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $count = 0;
+
+    foreach ($session['user']['guilds'] as $guild)
+    {
+        $guildId     = (int)($guild['id'] ?? 0);
+        $guildName   = trim($guild['name'] ?? '');
+        $guildIcon   = $guild['icon']   ?: null;
+        $guildBanner = $guild['banner'] ?: null;
+
+        if ($guildId === 0 || $guildName === '')
+        {
+            continue;
+        }
+
+        $stmt->execute([
+            ':guild_id'     => $guildId,
+            ':guild_name'   => $guildName,
+            ':guild_icon'   => $guildIcon,
+            ':guild_banner' => $guildBanner
+        ]);
+
+        $count++;
+    }
+
+    return $count;
 }

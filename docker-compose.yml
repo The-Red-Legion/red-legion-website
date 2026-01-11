@@ -26,5 +26,19 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: redlegion-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: red_legion_website
+      PMA_PASSWORD: redlegionpass
+    depends_on:
+      - db
+
 volumes:
   mysql_data:

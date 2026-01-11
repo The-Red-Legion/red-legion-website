@@ -1,7 +1,56 @@
 <?php
-include __DIR__ . '/../app/bootstrap.php';
+$bootstrap = require __DIR__ . '/../app/bootstrap.php';
 include __DIR__ . '/../app/functions.php';
+include __DIR__ . '/../app/discord.php';
 
+//1. Visiting the page for the first time, set us at step 1.
+//We need to authenticate with Discord.
+if(empty($_SESSION['ApplicationStep']))
+{
+    $_SESSION['ApplicationStep'] = 1;
+
+    //Authentication URL for Discord.
+    //Make sure we're giving the right redirect URL for the
+    //dev/prod environment.
+    if($env['APP_ENV'] == 'dev')
+    {
+        $DiscordRedirectURI = $env['DISCORD_REDIRECT_URI2'];
+    }
+    else
+    {
+        $DiscordRedirectURI = $env['DISCORD_REDIRECT_URI1'];
+    }
+
+    $DiscordURL = url($env['DISCORD_CLIENT_ID'], $DiscordRedirectURI, $env['DISCORD_SCOPES']);
+    
+    //If we're not already in possession of an access token for the user,
+    //have them authenticate into Discord.
+    if(empty($_SESSION['access_token']))
+    {
+        init($env['DISCORD_REDIRECT_URI2'], $env['DISCORD_CLIENT_ID'], $env['DISCORD_CLIENT_SECRET'], $env['DISCORD_BOT_TOKEN']);
+    }
+}
+
+//If we're in this code block, the user has authenticated with Discord.
+//Track the info and progress.
+if(($_SESSION['ApplicationStep'] ?? null) === 1 && !empty($_GET['state']))
+{
+    //Get the Discord User and Guild Information.
+    get_user();
+    $_SESSION['user']['guilds'] = get_guilds();
+
+    //Update the guild database.
+    syncDiscordGuilds();
+
+    //Create applicant record.
+    $applicantId = insertApplicantFromDiscord();
+
+    //Write guild relationships.
+    if ($applicantId !== null) {
+        insertGuildMembershipsForApplicant($applicantId);
+        $_SESSION['ApplicantID'] = $applicantId;
+    }
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -79,8 +128,7 @@ include __DIR__ . '/../app/functions.php';
 
 
 
-
-
+<?php if($_SESSION['ApplicationStep'] == 1): ?>
                 <!--:::Begin Divider Card-->
                 <section class="position-relative overflow-hidden">
                 <div class="container py-9 py-lg-11">
@@ -101,7 +149,7 @@ include __DIR__ . '/../app/functions.php';
                                         <!-- Discord Button -->
                                         <p><br>
                                         <div class="d-flex justify-content-center">
-                                            <a href="#"
+                                            <a href="<?php echo $DiscordURL; ?>"
                                                 class="btn btn-discord btn-outline-light d-inline-flex align-items-center">
                                                 <i class="bi bi-discord me-2"></i>
                                                 Authenticate with Discord
@@ -132,7 +180,7 @@ include __DIR__ . '/../app/functions.php';
                 </div>
                 </section>
                 <!--:::/End Divider Card-->
-
+<?php endif; ?>
             
             
         </main>
