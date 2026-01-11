@@ -7,20 +7,24 @@ services:
       - "8080:80"
     volumes:
       - ./:/var/www/html
+    env_file:
+      - .env
     depends_on:
       - db
 
   db:
-    image: mysql:8.0
+    image: mysql:8.4
+    container_name: redlegion-mysql
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: red_legion_website
       MYSQL_USER: red_legion_website
-      MYSQL_PASSWORD: red_legion_website
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: redlegionpass
+      MYSQL_ROOT_PASSWORD: rootpass
     ports:
       - "3306:3306"
     volumes:
-      - dbdata:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
 
 volumes:
-  dbdata:
+  mysql_data:

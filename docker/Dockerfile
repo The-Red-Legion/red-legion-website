@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libzip-dev \
- && docker-php-ext-install zip \
+ && docker-php-ext-install zip pdo_mysql \
  && rm -rf /var/lib/apt/lists/*
 
 # Enable required Apache modules
@@ -29,4 +29,3 @@ RUN { \
   echo "display_errors=On"; \
   echo "error_reporting=E_ALL"; \
 } > /usr/local/etc/php/conf.d/dev.ini
-

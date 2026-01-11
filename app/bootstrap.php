@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/../vendor/autoload.php';
 
 /**
  * Application bootstrap file
@@ -30,7 +31,6 @@ if (file_exists(__DIR__ . '/../.env')) {
 }
 $env = $_ENV + $_SERVER; // Apache mod_php sometimes populates $_SERVER
 
-/*
 // 5. PDO database connection (strict + flexible)
 $require = function (array $keys, array $env): void {
     foreach ($keys as $k) {
@@ -101,7 +101,7 @@ try {
     // Dev: show the actual error to help diagnose
     die('Database connection failed: ' . $e->getMessage());
 }
-*/
+
 
 // 7. Return useful objects to entry points
 return [
