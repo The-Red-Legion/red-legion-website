@@ -3,78 +3,24 @@ $bootstrap = require __DIR__ . '/../app/bootstrap.php';
 include __DIR__ . '/../app/functions.php';
 include __DIR__ . '/../app/discord.php';
 
-//Discord Authentication Workflow.
-//1. Generate the URL with url().
-//2. User clicks on the link and auths.
-//3. We get back a code in the URL.
-//4. We call init() to get the access_token.
-//5. Add the access_token to $_SESSION to make calls using it.
-
 
 //Make sure we're where we need to be based on the tracked step.
 if(empty($_SESSION['ApplicationStep']) || $_SESSION['ApplicationStep'] == 1)
 {
-    $_SESSION['ApplicationStep'] = 1;
+    header("Location:/Apply");
+    exit;
 }
 else
 {
     switch($_SESSION['ApplicationStep'])
     {
-        case 2: header("Location:/RSIConfirm");
-                exit;
+        case 2: $rsiToken = 'TRL:' . getRSIAuthTokenByApplicantId($_SESSION['user']['ApplicantID']);
+                break;
         case 3: header("Location:/SubmitApplication");
                 exit;
         default: header("Location:/");
                 exit;
     }
-}
-
-//Step 1: Generate the Authentication URL for Discord.
-if($env['APP_ENV'] == 'dev')
-{
-    $DiscordRedirectURI = $env['DISCORD_REDIRECT_URI2'];
-}
-else
-{
-   $DiscordRedirectURI = $env['DISCORD_REDIRECT_URI1'];
-}
-$DiscordURL = url($env['DISCORD_CLIENT_ID'], $DiscordRedirectURI, $env['DISCORD_SCOPES']);
-
-/////////////////////////////////////
-
-
-//Step 2: After Authentication, initiatize the data structure and pull info.
-//This runs after authentication.
-if(!empty($_GET['code']))
-{
-    //init() takes the code returned from Discord and fetches the access_token for the user.
-    //Once that's done and set in the session, we can start pulling data.
-    init($env['DISCORD_REDIRECT_URI2'], $env['DISCORD_CLIENT_ID'], $env['DISCORD_CLIENT_SECRET'], $env['DISCORD_BOT_TOKEN']);
-}
-
-
-//Step 3: Get user information, and update the database.
-if(!empty($_SESSION['access_token']))
-{
-    get_user();
-    $_SESSION['user']['guilds'] = get_guilds();
-
-    //Update the guild database.
-    syncDiscordGuilds();
-
-    //Create applicant record.
-    $applicantId = insertApplicantFromDiscord();
-
-    //Write guild relationships.
-    if ($applicantId !== null) {
-        insertGuildMembershipsForApplicant($applicantId);
-        $_SESSION['ApplicantID'] = $applicantId;
-    }
-
-    $_SESSION['user']['ApplicantID'] = $applicantId;
-    $_SESSION['ApplicationStep'] = 2;
-    header("Location:/RSIConfirm");
-    exit;
 }
 
 
@@ -153,40 +99,83 @@ if(!empty($_SESSION['access_token']))
                 </div>
             </section>
 
-
-
-<?php if($_SESSION['ApplicationStep'] == 1): ?>
                 <!--:::Begin Divider Card-->
                 <section class="position-relative overflow-hidden">
                 <div class="container py-9 py-lg-11">
                     <div class="card mb-4 overflow-hidden">
                         <div class="card-header">
-                            <h5 class="mb-0">Step 1: Discord Authentication</h5>
+                            <h5 class="mb-0">Step 2: Confirm your RSI Account</h5>
                         </div>
                         <div class="card-body">
                             <!--Content-Section-->
                             <section class="pb-7 bg-primary position-relative overflow-hidden">
                                 <!--Container-->
                                 <div class="py-3 py-lg-11 container text-white">
-                                    <h6>1. Discord provides secure authentication services for third 
-                                party applications such as ours. In this step, we'll join you to our Discord server and 
-                                we'll collect a minimal amount of information (primarily your Discord ID and Handle) so 
-                                that we know what person matches up with what application.
+                                    <h6>
+                                        1. Copy the validation code to your clipboard:<p>
 
-                                        <!-- Discord Button -->
-                                        <p><br>
-                                        <div class="d-flex justify-content-center">
-                                            <a href="<?php echo $DiscordURL; ?>"
-                                                class="btn btn-discord btn-outline-light d-inline-flex align-items-center">
-                                                <i class="bi bi-discord me-2"></i>
-                                                Authenticate with Discord
-                                            </a>
+                                        <!-- RSI Code Copy Box -->
+                                        <div class="row justify-content-center mb-3">
+                                            <div class="col-12 col-md-6">
+                                                <div class="input-group">
+                                                    <input type="text" onclick="this.select()"
+                                                        id="rsi-token"
+                                                        class="form-control text-center"
+                                                        value="<?php echo $rsiToken; ?>"
+                                                        readonly>
+
+                                                    <button class="btn btn-outline-light"
+                                                            type="button"
+                                                            onclick="copyRSIToken(this)"
+                                                            aria-label="Copy RSI code">
+                                                        <i class="bi bi-clipboard"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <!-- End Discord Button -->
 
+                                        2.
+                                        <a href="https://robertsspaceindustries.com/en/account/profile"
+                                        target="_blank"
+                                        class="fs-6 link-hover-underline text-gradient-light">
+                                            Click here
+                                        </a>
+                                        and add the below code to your Short Bio on the RSI Website. Click the
+                                        <strong>"APPLY ALL CHANGES"</strong> button at the bottom of your profile page.
+                                        <p><br>
 
+                                        3. Enter your RSI Username and click the validate button below.
+                                        <p>
+
+                                        <form method="post" action="/RSIDoConfirm">
+
+                                            <!-- RSI Username Input -->
+                                            <div class="row justify-content-center mb-4">
+                                                <div class="col-12 col-md-6">
+                                                    <input type="text"
+                                                        name="rsi_username"
+                                                        class="form-control form-control-lg text-center"
+                                                        placeholder="Enter your RSI Username"
+                                                        required>
+                                                </div>
+                                            </div>
+
+                                            <!-- Submit Button -->
+                                            <div class="d-flex justify-content-center">
+                                                <button type="submit"
+                                                        class="btn btn-discord btn-outline-light d-inline-flex align-items-center">
+                                                    <img src="/assets/img/rsiwhite.png"
+                                                        alt="RSI"
+                                                        class="me-2"
+                                                        style="height: 1.25em; width: auto;">
+                                                    Validate RSI Account
+                                                </button>
+                                            </div>
+
+                                        </form>
                                     </h6>
                                 </div>
+
                                 <!--Section divider-->
                                 <svg class="w-100 position-absolute flip-y start-0 bottom-0" style="color: var(--bs-body-bg);"
                                     height="48" fill="currentColor" preserveAspectRatio="none" viewBox="0 0 1200 120"
@@ -207,8 +196,6 @@ if(!empty($_SESSION['access_token']))
                 </div>
                 </section>
                 <!--:::/End Divider Card-->
-<?php endif; ?>
-            
             
         </main>
 
@@ -227,3 +214,25 @@ if(!empty($_SESSION['access_token']))
     </body>
 
 </html>
+
+<script>
+function copyRSIToken(button) {
+    const input = document.getElementById('rsi-token');
+
+    input.select();
+    input.setSelectionRange(0, 99999); // mobile support
+
+    navigator.clipboard.writeText(input.value).then(() => {
+        // Visual feedback
+        button.innerHTML = '<i class="bi bi-check-lg"></i>';
+        button.classList.remove('btn-outline-light');
+        button.classList.add('btn-success');
+
+        setTimeout(() => {
+            button.innerHTML = '<i class="bi bi-clipboard"></i>';
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-light');
+        }, 2000);
+    });
+}
+</script>

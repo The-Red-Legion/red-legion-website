@@ -170,7 +170,7 @@ function insertApplicantFromDiscord(): ?int
             'N',
             NOW(),
             NULL,
-            'Applied'
+            'Unsubmitted'
         )
     ";
 
@@ -206,8 +206,6 @@ function insertGuildMembershipsForApplicant(int $applicantId): void
 {
     global $pdo;
     $session = $_SESSION;
-
-    d($_SESSION);
 
     $guilds = $session['user']['guilds'] ?? [];
 
@@ -272,3 +270,97 @@ function getRSIAuthTokenByApplicantId(int $applicantId): ?string
 
     return $token !== false ? $token : null;
 }
+
+/**
+ * Validates that an RSI profile contains the expected confirmation token.
+ *
+ * @param string $rsiUsername
+ * @param string $expectedToken
+ * @return bool
+ */
+function validateRSIProfile(string $rsiUsername, string $expectedToken): bool
+{
+    $url = 'https://robertsspaceindustries.com/en/citizens/' . rawurlencode($rsiUsername);
+
+    $html = fetchRSIProfileHtml($url);
+
+    if (!$html) {
+        return false;
+    }
+
+    return rsiProfileContainsToken($html, $expectedToken);
+}
+
+
+function fetchRSIProfileHtml(string $url): ?string
+{
+    $ch = curl_init($url);
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; RSI-Validator/1.0)',
+        CURLOPT_HTTPHEADER => [
+            'Accept: text/html',
+            'Accept-Language: en-US,en;q=0.9',
+        ],
+    ]);
+
+    $html = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    curl_close($ch);
+
+    if ($httpCode !== 200 || !$html) {
+        return null;
+    }
+
+    return $html;
+}
+
+function rsiProfileContainsToken(string $html, string $token): bool
+{
+    return stripos($html, $token) !== false;
+}
+
+/**
+ * Marks an applicant's RSI account as confirmed.
+ *
+ * This function:
+ * - Stores the confirmed RSI username
+ * - Sets RSIConfirmed = 'Y'
+ * - Sets RSIConfirmedDate only once
+ *
+ * @param int    $applicantId   Internal ApplicantID
+ * @param string $rsiUsername   Confirmed RSI username
+ * @return bool                True if updated, false if already confirmed or failed
+ */
+function markRSIConfirmed(int $applicantId, string $rsiUsername): bool
+{
+    global $pdo;
+
+    /**
+     * Only update records that are not already confirmed
+     */
+    $sql = "
+        UPDATE Applicants
+        SET
+            RSIUsername = :rsi_username,
+            RSIConfirmed = 'Y',
+            ModifyDate = NOW()
+        WHERE ApplicantID = :applicant_id
+          AND RSIConfirmed = 'N'
+        LIMIT 1
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        ':rsi_username' => $rsiUsername,
+        ':applicant_id' => $applicantId
+    ]);
+
+    return $stmt->rowCount() === 1;
+}
+
