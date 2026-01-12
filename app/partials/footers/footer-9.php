@@ -14,8 +14,8 @@
         <div class="row mb-5 mb-lg-7">
             <div class="col-md-6 mb-3 mb-md-0">
                 <!--:Brand:-->
-                <a href="index.html">
-                    <img src="assets/img/logo/logo.png" class="width-10x d-block h-auto" alt=""></a>
+                <a href="/">
+                    <img src="/assets/img/logo/logo.png" class="width-10x d-block h-auto" alt=""></a>
                 <div class="position-relative">
 			<?php
 		                //Color mode.

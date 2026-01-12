@@ -397,3 +397,160 @@ function updateApplicantReasonAndStatus(int $applicantId, string $reason): void
         throw new RuntimeException('Applicant update failed.');
     }
 }
+
+
+function getApplicantsForReview()
+{
+    global $pdo;
+
+    $sql = "
+        SELECT
+            a.*,
+
+            /* Red flag: applicant is a member of at least one blacklisted guild */
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM Guild_Memberships gm
+                    JOIN Guilds g
+                      ON g.GuildID = gm.GuildID
+                    WHERE gm.ApplicantID = a.ApplicantID
+                      AND g.Blacklisted = 'Y'
+                )
+                THEN 'Y'
+                ELSE 'N'
+            END AS HasBlacklistedGuild
+
+        FROM Applicants a
+        WHERE a.Status <> 'Unsubmitted'
+        ORDER BY a.CreateDate DESC
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+
+function renderRedFlags(array $a): string
+{
+    $flags = [];
+
+    if (
+        isset($a['HasBlacklistedGuild']) &&
+        $a['HasBlacklistedGuild'] === 'Y'
+    ) {
+        $flags[] = '<span class="badge bg-danger">Blacklisted Guild</span>';
+    }
+
+    if (
+        isset($a['Blacklist']) &&
+        $a['Blacklist'] === 'Y'
+    ) {
+        $flags[] = '<span class="badge bg-warning">Applicant Blacklisted</span>';
+    }
+
+    return $flags
+        ? implode(' ', $flags)
+        : '<span class="text-muted">None</span>';
+}
+
+/**
+ * Maps applicant status to Bootstrap badge color.
+ * MUST remain in sync with allowed Status values.
+ */
+function statusBadge(?string $status): string
+{
+    return match ($status ?? '') {
+        'Applied'     => 'info',
+        'Accepted'    => 'success',
+        'Denied'      => 'danger',
+        'Hold'        => 'warning',
+        'Blacklisted' => 'dark',
+        default       => 'secondary',
+    };
+}
+
+/**
+ * Builds a Discord avatar URL, handling animated avatars correctly.
+ */
+function discordAvatarUrl(?string $discordId, ?string $avatarHash, int $size = 128): ?string
+{
+    if (!$discordId || !$avatarHash) {
+        return null;
+    }
+
+    $isAnimated = str_starts_with($avatarHash, 'a_');
+    $extension  = $isAnimated ? 'gif' : 'png';
+
+    return sprintf(
+        'https://cdn.discordapp.com/avatars/%s/%s.%s?size=%d',
+        $discordId,
+        $avatarHash,
+        $extension,
+        $size
+    );
+}
+
+function getApplicantById(int $applicantId): ?array
+{
+    global $pdo;
+
+    $stmt = $pdo->prepare("
+        SELECT *
+        FROM Applicants
+        WHERE ApplicantID = :id
+        LIMIT 1
+    ");
+    $stmt->execute([':id' => $applicantId]);
+
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function getApplicantGuilds(int $applicantId): array
+{
+    global $pdo;
+
+    $stmt = $pdo->prepare("
+        SELECT
+            g.GuildID,
+            g.GuildName,
+            g.StarCitizenRelated,
+            g.Blacklisted,
+
+            gm.GuildOwner,
+            gm.GuildPermissions
+
+        FROM Guild_Memberships gm
+        JOIN Guilds g
+          ON g.GuildID = gm.GuildID
+        WHERE gm.ApplicantID = :id
+        ORDER BY g.GuildName
+    ");
+
+    $stmt->execute([':id' => $applicantId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getApplicantHistory(?int $discordId): array
+{
+    if (!$discordId) {
+        return [];
+    }
+
+    global $pdo;
+
+    $stmt = $pdo->prepare("
+        SELECT ApplicantID, Status, CreateDate
+        FROM Applicants
+        WHERE DiscordID = :discordId
+        ORDER BY CreateDate DESC
+    ");
+    $stmt->execute([':discordId' => $discordId]);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
