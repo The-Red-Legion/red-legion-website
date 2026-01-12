@@ -364,3 +364,36 @@ function markRSIConfirmed(int $applicantId, string $rsiUsername): bool
     return $stmt->rowCount() === 1;
 }
 
+/**
+ * Updates an applicant's status to Applied and stores their reason for joining.
+ *
+ * @param int    $applicantId  Applicant primary key
+ * @param string $reason       Applicant's reason for joining
+ * @return void
+ * @throws PDOException
+ */
+function updateApplicantReasonAndStatus(int $applicantId, string $reason): void
+{
+    global $pdo;
+
+    $sql = "
+        UPDATE Applicants
+        SET
+            Status = 'Applied',
+            Reason = :reason,
+            ModifyDate = NOW()
+        WHERE ApplicantID = :applicant_id
+        LIMIT 1
+    ";
+
+    $stmt = $pdo->prepare($sql);
+
+    $stmt->execute([
+        ':reason'        => $reason,
+        ':applicant_id' => $applicantId,
+    ]);
+
+    if ($stmt->rowCount() !== 1) {
+        throw new RuntimeException('Applicant update failed.');
+    }
+}

@@ -3,9 +3,16 @@ $bootstrap = require __DIR__ . '/../app/bootstrap.php';
 include __DIR__ . '/../app/functions.php';
 include __DIR__ . '/../app/discord.php';
 
+//Get the RSI Username submitted.
 $rsiUsername = trim($_POST['rsi_username']) ?? null;
 
-if (!$rsiUsername) 
+//Get the ApplicationID from the session.
+$applicantId = $_SESSION['ApplicantID'] ?? null;
+
+//Get the token from the session.
+$token = 'TRL:' . getRSIAuthTokenByApplicantId($applicantId);
+
+if (!$rsiUsername || !$applicantId || !$token) 
 {
     header("Location:/RSIConfim");
     exit;
@@ -15,35 +22,21 @@ if (!$rsiUsername)
 $rsiUsername = trim($_POST['rsi_username']);
 $url = 'https://robertsspaceindustries.com/en/citizens/' . rawurlencode($rsiUsername);
 
-//Get the ApplicationID from the session.
-$applicantId = $_SESSION['ApplicantID'] ?? null;
-
-if (!$rsiUsername || !$applicantId) 
-{
-        // handle error
-        //HANDLE THIS.
-}
-
 $token = 'TRL:' . getRSIAuthTokenByApplicantId($applicantId);
 
-if (!$token) 
-{
-    // handle missing token
-    //HANDLE THIS.
-}
 
 if (validateRSIProfile($rsiUsername, $token)) 
 {
     // SUCCESS
     markRSIConfirmed($applicantId, $rsiUsername);
-    header("Location:/Application");
+    $_SESSION['ApplicationStep'] = 3;
+    header("Location:/SubmitApplication");
     exit;
 } 
 else 
 {
-    // FAIL
-    //HANDLE THIS.
-    // show message: "Token not found in RSI profile"
-    echo "No Joy";
+    $_SESSION['error'] = "Validation code not found in RSI Profile. Please check the instructions and try again.";
+    header("Location:/RSIConfirm");
+    exit;
 }
 ?>

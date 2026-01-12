@@ -79,7 +79,7 @@ include __DIR__ . '/../app/partials/head-includes.html';
                         </div>
 
                         <div class="nav-item me-2 d-none d-xl-flex">
-                            <a href="/Apply" class="btn btn-success btn-sm rounded-pill">Apply Today!</a>
+                            <a href="/Apply" class="btn btn-success btn-sm rounded-pill">Join Today!</a>
                         </div>
 
                         <div class="nav-item me-2 d-none d-xl-flex">

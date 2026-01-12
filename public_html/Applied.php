@@ -1,15 +1,7 @@
 <?php
 $bootstrap = require __DIR__ . '/../app/bootstrap.php';
-include __DIR__ . '/../app/functions.php';
-include __DIR__ . '/../app/discord.php';
 
-
-//Make sure we're where we need to be based on the tracked step.
-if(empty($_SESSION['ApplicationStep']) || $_SESSION['ApplicationStep'] == 3)
-{
-    header("Location:/Apply");
-    exit;
-}
+session_destroy();
 
 ?>
 <!doctype html>
@@ -87,12 +79,22 @@ if(empty($_SESSION['ApplicationStep']) || $_SESSION['ApplicationStep'] == 3)
                 </div>
             </section>
 
+                <!-- Display error if needed -->
+                <?php if (!empty($_SESSION['error'])): ?>
+                    <div class="alert alert-warning alert-dismissible fade show rounded-0 mb-0" role="alert">
+                        <?php echo htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8'); ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php unset($_SESSION['error']); ?>
+                <?php endif; ?>
+
+
                 <!--:::Begin Divider Card-->
                 <section class="position-relative overflow-hidden">
                 <div class="container py-9 py-lg-11">
                     <div class="card mb-4 overflow-hidden">
                         <div class="card-header">
-                            <h5 class="mb-0">Step 3: Submit Your Application</h5>
+                            <h5 class="mb-0">Thank you!</h5>
                         </div>
                         <div class="card-body">
                             <!--Content-Section-->
@@ -100,67 +102,26 @@ if(empty($_SESSION['ApplicationStep']) || $_SESSION['ApplicationStep'] == 3)
                                 <!--Container-->
                                 <div class="py-3 py-lg-11 container text-white">
                                     <h6>
-                                        1. Copy the validation code to your clipboard:<p>
+                                    
+                                    <div class="d-flex justify-content-center text-center my-5">
+                                        <div class="w-75 p-4 border rounded bg-body">
+                                            <p class="fs-4 fw-semibold mb-2">
+                                                Application Submitted Successfully
+                                            </p>
 
-                                        <!-- RSI Code Copy Box -->
-                                        <div class="row justify-content-center mb-3">
-                                            <div class="col-12 col-md-6">
-                                                <div class="input-group">
-                                                    <input type="text" onclick="this.select()"
-                                                        id="rsi-token"
-                                                        class="form-control text-center"
-                                                        value="<?php echo $rsiToken; ?>"
-                                                        readonly>
+                                            <p class="fs-5 mb-3">
+                                                Thank you for applying to <strong>The Red Legion</strong>.
+                                            </p>
 
-                                                    <button class="btn btn-outline-light"
-                                                            type="button"
-                                                            onclick="copyRSIToken(this)"
-                                                            aria-label="Copy RSI code">
-                                                        <i class="bi bi-clipboard"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            <p class="mb-0">
+                                                Our leadership team will carefully review your application.
+                                                You will be notified of our decision via <strong>Discord</strong>.
+                                                Please keep an eye on your messages and ensure your privacy settings allow direct messages.
+                                            </p>
                                         </div>
+                                    </div>
 
-                                        2.
-                                        <a href="https://robertsspaceindustries.com/en/account/profile"
-                                        target="_blank"
-                                        class="fs-6 link-hover-underline text-gradient-light">
-                                            Click here
-                                        </a>
-                                        and add the below code to your Short Bio on the RSI Website. Click the
-                                        <strong>"APPLY ALL CHANGES"</strong> button at the bottom of your profile page.
-                                        <p><br>
-
-                                        3. Enter your RSI Username and click the validate button below.
-                                        <p>
-
-                                        <form method="post" action="/RSIDoConfirm">
-
-                                            <!-- RSI Username Input -->
-                                            <div class="row justify-content-center mb-4">
-                                                <div class="col-12 col-md-6">
-                                                    <input type="text"
-                                                        name="rsi_username"
-                                                        class="form-control form-control-lg text-center"
-                                                        placeholder="Enter your RSI Username"
-                                                        required>
-                                                </div>
-                                            </div>
-
-                                            <!-- Submit Button -->
-                                            <div class="d-flex justify-content-center">
-                                                <button type="submit"
-                                                        class="btn btn-discord btn-outline-light d-inline-flex align-items-center">
-                                                    <img src="/assets/img/rsiwhite.png"
-                                                        alt="RSI"
-                                                        class="me-2"
-                                                        style="height: 1.25em; width: auto;">
-                                                    Validate RSI Account
-                                                </button>
-                                            </div>
-
-                                        </form>
+                                                                             
                                     </h6>
                                 </div>
 
